@@ -1,0 +1,456 @@
+{
+  "info": {
+    "_postman_id": "fhir-patient-tutorial-2026",
+    "name": "FHIR Patient Tutorial (HAPI)",
+    "description": "Pre-configured collection for the FHIR Patient Resource Tutorial.\n\nThis collection includes all CRUD operations for Patient resources against the HAPI FHIR R4 test server.\n\n**Getting Started:**\n1. Import this collection into Postman\n2. Import the accompanying environment file\n3. Select \"FHIR Tutorial\" from the environment dropdown\n4. Start with \"1. CREATE Patient\" to generate a patient ID\n\n**Server:** https://hapi.fhir.org/baseR4\n**FHIR Version:** R4 (4.0.1)\n**Authentication:** None required (public test server)\n\n⚠️ Note: This is a public test server. Data may be purged periodically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. CREATE Patient (POST)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Validate response status",
+              "pm.test('Status is 201 Created', function() {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "// Extract and store Patient ID",
+              "let createdId = null;",
+              "",
+              "// Try to get ID from response body first",
+              "try {",
+              "    const json = pm.response.json();",
+              "    if (json && json.id) {",
+              "        createdId = json.id;",
+              "    }",
+              "} catch (e) {",
+              "    console.log('Could not parse response body');",
+              "}",
+              "",
+              "// Fallback: extract from Location header",
+              "if (!createdId) {",
+              "    const location = pm.response.headers.get('Location');",
+              "    if (location) {",
+              "        const parts = location.split('/');",
+              "        const idx = parts.indexOf('Patient');",
+              "        if (idx >= 0 && parts[idx + 1]) {",
+              "            createdId = parts[idx + 1].split('/_history')[0];",
+              "        }",
+              "    }",
+              "}",
+              "",
+              "// Store the ID for subsequent requests",
+              "if (createdId) {",
+              "    pm.environment.set('patientId', createdId);",
+              "    console.log('Patient ID saved:', createdId);",
+              "    pm.test('Patient ID captured: ' + createdId, function() {",
+              "        pm.expect(createdId).to.not.be.empty;",
+              "    });",
+              "} else {",
+              "    console.warn('Could not extract Patient ID');",
+              "}",
+              "",
+              "// Validate response structure",
+              "pm.test('Response is a Patient resource', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.resourceType).to.equal('Patient');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Log the request for debugging",
+              "console.log('Creating new Patient...');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/fhir+json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          },
+          {
+            "key": "Prefer",
+            "value": "return=representation",
+            "type": "text",
+            "description": "Return the created resource in the response body"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceType\": \"Patient\",\n  \"active\": true,\n  \"name\": [{\n    \"use\": \"official\",\n    \"family\": \"Tutorial\",\n    \"given\": [\"Test\", \"Patient\"]\n  }],\n  \"gender\": \"other\",\n  \"birthDate\": \"1990-01-15\",\n  \"telecom\": [{\n    \"system\": \"email\",\n    \"value\": \"test.patient@example.com\",\n    \"use\": \"home\"\n  }],\n  \"address\": [{\n    \"use\": \"home\",\n    \"line\": [\"123 Tutorial Street\"],\n    \"city\": \"Boston\",\n    \"state\": \"MA\",\n    \"postalCode\": \"02101\",\n    \"country\": \"USA\"\n  }]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Patient",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient"]
+        },
+        "description": "Creates a new Patient resource on the FHIR server.\n\n**What happens:**\n1. Server validates the Patient resource\n2. Server assigns a unique ID\n3. Server returns 201 Created with the new resource\n4. Test script automatically saves the Patient ID to `{{patientId}}`\n\n**Next step:** Use the captured `{{patientId}}` in READ, UPDATE, and DELETE requests."
+      },
+      "response": []
+    },
+    {
+      "name": "2. READ Patient (GET)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "// Validate successful response",
+              "pm.test('Status is 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// Validate response structure",
+              "pm.test('Response is a Patient resource', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.resourceType).to.equal('Patient');",
+              "});",
+              "",
+              "// Log patient name if available",
+              "try {",
+              "    const json = pm.response.json();",
+              "    if (json.name && json.name[0]) {",
+              "        const name = json.name[0];",
+              "        console.log('Patient:', name.given?.join(' '), name.family);",
+              "    }",
+              "} catch (e) {}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/Patient/{{patientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient", "{{patientId}}"]
+        },
+        "description": "Retrieves a Patient resource by ID.\n\n**Prerequisites:**\n- Run \"1. CREATE Patient\" first to populate `{{patientId}}`\n- Or manually set `patientId` in your environment\n\n**Expected Response:**\n- 200 OK with full Patient resource\n- 404 Not Found if ID doesn't exist\n- 410 Gone if patient was deleted"
+      },
+      "response": []
+    },
+    {
+      "name": "3. UPDATE Patient (PUT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 OK or 201 Created', function() {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "});",
+              "",
+              "pm.test('Response is a Patient resource', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.resourceType).to.equal('Patient');",
+              "});",
+              "",
+              "// Verify the update was applied",
+              "pm.test('Family name was updated', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.name[0].family).to.equal('Tutorial-Updated');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Ensure patientId is set",
+              "const patientId = pm.environment.get('patientId');",
+              "if (!patientId) {",
+              "    console.warn('Warning: patientId not set. Run CREATE first.');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/fhir+json",
+            "type": "text"
+          },
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceType\": \"Patient\",\n  \"id\": \"{{patientId}}\",\n  \"active\": true,\n  \"name\": [{\n    \"use\": \"official\",\n    \"family\": \"Tutorial-Updated\",\n    \"given\": [\"Test\", \"Patient\", \"Modified\"]\n  }],\n  \"gender\": \"other\",\n  \"birthDate\": \"1990-01-15\",\n  \"telecom\": [{\n    \"system\": \"email\",\n    \"value\": \"updated.patient@example.com\",\n    \"use\": \"home\"\n  }, {\n    \"system\": \"phone\",\n    \"value\": \"(555) 123-4567\",\n    \"use\": \"mobile\"\n  }],\n  \"address\": [{\n    \"use\": \"home\",\n    \"line\": [\"456 Updated Avenue\", \"Suite 100\"],\n    \"city\": \"Chicago\",\n    \"state\": \"IL\",\n    \"postalCode\": \"60601\",\n    \"country\": \"USA\"\n  }]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Patient/{{patientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient", "{{patientId}}"]
+        },
+        "description": "Replaces an existing Patient resource entirely.\n\n**Important:** PUT is a full replacement operation!\n- All fields in the request body will replace the existing resource\n- Any fields NOT included will be removed\n- The `id` in the body MUST match the URL\n\n**Prerequisites:**\n- Run \"1. CREATE Patient\" first\n\n**Use PATCH instead if:**\n- You only want to modify specific fields\n- You don't want to risk losing existing data"
+      },
+      "response": []
+    },
+    {
+      "name": "4. PATCH Patient (Partial Update)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is a Patient resource', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.resourceType).to.equal('Patient');",
+              "});",
+              "",
+              "// Verify the patch was applied",
+              "pm.test('Phone number was added', function() {",
+              "    const json = pm.response.json();",
+              "    const phone = json.telecom?.find(t => t.system === 'phone' && t.use === 'work');",
+              "    pm.expect(phone).to.not.be.undefined;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json-patch+json",
+            "type": "text",
+            "description": "Note: Different Content-Type for PATCH"
+          },
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"op\": \"add\",\n    \"path\": \"/telecom/-\",\n    \"value\": {\n      \"system\": \"phone\",\n      \"value\": \"(555) 999-8888\",\n      \"use\": \"work\"\n    }\n  },\n  {\n    \"op\": \"replace\",\n    \"path\": \"/active\",\n    \"value\": true\n  }\n]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Patient/{{patientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient", "{{patientId}}"]
+        },
+        "description": "Performs a partial update using JSON Patch (RFC 6902).\n\n**Content-Type:** `application/json-patch+json` (different from other requests!)\n\n**JSON Patch Operations:**\n- `add` - Add a new value (use `/-` to append to arrays)\n- `remove` - Remove a value at path\n- `replace` - Replace existing value\n- `move` - Move value from one path to another\n- `copy` - Copy value from one path to another\n- `test` - Test that a value matches (fails if not)\n\n**Path Examples:**\n- `/birthDate` - Target the birthDate field\n- `/name/0/family` - Target family name of first name entry\n- `/telecom/-` - Append to end of telecom array\n- `/address/0` - Target first address entry\n\n**Prerequisites:**\n- Run \"1. CREATE Patient\" first"
+      },
+      "response": []
+    },
+    {
+      "name": "5. SEARCH Patients (GET)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is a Bundle', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.resourceType).to.equal('Bundle');",
+              "    pm.expect(json.type).to.equal('searchset');",
+              "});",
+              "",
+              "// Log search results summary",
+              "try {",
+              "    const json = pm.response.json();",
+              "    console.log('Total matches:', json.total);",
+              "    console.log('Entries returned:', json.entry?.length || 0);",
+              "} catch (e) {}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/Patient?name=Tutorial&_count=10&_sort=-_lastUpdated",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient"],
+          "query": [
+            {
+              "key": "name",
+              "value": "Tutorial",
+              "description": "Search by name (any part)"
+            },
+            {
+              "key": "_count",
+              "value": "10",
+              "description": "Limit results to 10"
+            },
+            {
+              "key": "_sort",
+              "value": "-_lastUpdated",
+              "description": "Sort by last updated, newest first"
+            }
+          ]
+        },
+        "description": "Searches for Patient resources matching criteria.\n\n**Common Search Parameters:**\n- `name` - Any part of name\n- `family` - Family name only\n- `given` - Given name only\n- `birthdate` - Birth date (use prefixes: gt, lt, ge, le)\n- `gender` - male, female, other, unknown\n- `identifier` - System|value\n- `address-city` - City\n- `phone` - Phone number\n- `email` - Email address\n- `active` - true/false\n\n**Special Parameters:**\n- `_count` - Limit results\n- `_sort` - Sort field (prefix with - for descending)\n- `_id` - Search by resource ID\n\n**Combining Parameters:**\n- AND: `?family=Smith&gender=male`\n- OR: `?gender=male,female`\n- Date range: `?birthdate=ge1980&birthdate=le1990`\n\n**Response:** Bundle with type \"searchset\" containing matching Patient entries."
+      },
+      "response": []
+    },
+    {
+      "name": "6. DELETE Patient",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status indicates successful deletion', function() {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});",
+              "",
+              "// Clear the stored patientId since it's now deleted",
+              "if (pm.response.code === 200 || pm.response.code === 204) {",
+              "    console.log('Patient deleted. Clearing patientId variable.');",
+              "    pm.environment.unset('patientId');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Warn if about to delete",
+              "const patientId = pm.environment.get('patientId');",
+              "if (patientId) {",
+              "    console.log('About to delete Patient:', patientId);",
+              "} else {",
+              "    console.warn('Warning: patientId not set. This request may fail.');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/fhir+json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/Patient/{{patientId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["Patient", "{{patientId}}"]
+        },
+        "description": "Deletes a Patient resource.\n\n**Expected Responses:**\n- 200 OK - Success with OperationOutcome body\n- 204 No Content - Success with no body\n- 404 Not Found - Patient doesn't exist\n- 409 Conflict - Other resources reference this Patient\n\n**Important:**\n- HAPI FHIR performs \"soft delete\" by default\n- Deleted resources return 410 Gone on subsequent reads\n- Resource history is preserved\n\n**After Running:**\n- The `{{patientId}}` variable will be cleared\n- Run \"1. CREATE Patient\" again to create a new patient"
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level pre-request script",
+          "// Logs all requests for debugging",
+          "console.log('Request:', pm.request.method, pm.request.url.toString());"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level test script",
+          "// Runs after every request in this collection",
+          "",
+          "// Log response time",
+          "console.log('Response time:', pm.response.responseTime, 'ms');",
+          "",
+          "// Check for rate limiting",
+          "if (pm.response.code === 429) {",
+          "    console.warn('Rate limited! Wait a moment before retrying.');",
+          "}",
+          "",
+          "// Check for server errors",
+          "if (pm.response.code >= 500) {",
+          "    console.warn('Server error. The HAPI test server may be experiencing issues.');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://hapi.fhir.org/baseR4",
+      "type": "string"
+    }
+  ]
+}

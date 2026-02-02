@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FHIR Patient Resource Tutorial</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+  <!-- Skip link for accessibility -->
+  <a class="skip-link" href="#mainContent">Skip to main content</a>
+
+  <!-- Progress bar -->
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- Hamburger menu button for mobile -->
+  <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation menu">☰</button>
+
+  <!-- Navigation Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="progress-indicator" id="progressText">Module 1 of 6</div>
+    <ul class="nav-links">
+      <li><a href="#module-1">1. Introduction to FHIR</a></li>
+      <li><a href="#module-2">2. Environment Setup</a></li>
+      <li><a href="#module-3">3. Creating a Patient</a></li>
+      <li><a href="#module-4">4. Reading Patient Data</a></li>
+      <li><a href="#module-5">5. Advanced Operations</a></li>
+      <li><a href="#module-6">6. Search Operations</a></li>
+    </ul>
+    <a href="#quick-reference">Quick Reference</a>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="tutorial-container" id="mainContent">
+    <article id="module-1" class="module">
+      <h2>Module 1: Introduction to FHIR and the Patient Resource</h2>
+      <p>Welcome to this hands-on FHIR tutorial! By the end of this guide, you'll be able to create, read, update, and search Patient resources using the HAPI FHIR test server.</p>
+
+      <h3>1.1 What is FHIR and Why It Matters</h3>
+      <p>
+        <strong>FHIR (Fast Healthcare Interoperability Resources)</strong> is the modern standard for exchanging healthcare information electronically.
+        Unlike older standards that were difficult to implement, FHIR uses familiar web technologies (REST, JSON, HTTP) making it accessible to developers.
+      </p>
+      <p>
+        The <strong>Patient resource</strong> represents the demographic and administrative information about individuals receiving care.
+        It's the foundation for clinical workflows—almost every other FHIR resource (Observation, Medication, Appointment) references a Patient.
+      </p>
+
+      <h3>1.2 Anatomy of a Patient Resource</h3>
+      <p>A Patient resource is represented as a JSON object with a well-defined structure:</p>
+      <pre><code class="language-json">{
+  "resourceType": "Patient",          // Required: identifies the resource type
+  "id": "example-123",                // Server-assigned unique identifier
+  "meta": {
+    "versionId": "1",                 // Resource version for concurrency
+    "lastUpdated": "2026-01-31T10:00:00Z"
+  },
+  "identifier": [{                    // External identifiers (MRN, SSN)
+    "system": "http://hospital.org/mrn",
+    "value": "12345"
+  }],
+  "active": true,                     // Is this record in use?
+  "name": [{                          // HumanName datatype - supports multiple names
+    "use": "official",
+    "family": "Smith",
+    "given": ["John", "Edward"]
+  }],
+  "telecom": [{                       // ContactPoint - phones, emails
+    "system": "phone",
+    "value": "(555) 123-4567",
+    "use": "mobile"
+  }],
+  "gender": "male",                   // Code: male | female | other | unknown
+  "birthDate": "1980-01-15",          // Format: YYYY-MM-DD
+  "address": [{                       // Address datatype
+    "use": "home",
+    "line": ["123 Main Street"],
+    "city": "Boston",
+    "state": "MA",
+    "postalCode": "02101"
+  }]
+}</code></pre>
+
+      <h3>1.3 Key Patient Elements</h3>
+      <p>Here are the most commonly used Patient resource elements:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Element</th>
+            <th>Type</th>
+            <th>Cardinality</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>identifier</code></td>
+            <td>Identifier[]</td>
+            <td>0..*</td>
+            <td>MRN, SSN, or other identifiers with system/value pairs</td>
+          </tr>
+          <tr>
+            <td><code>name</code></td>
+            <td>HumanName[]</td>
+            <td>0..*</td>
+            <td>Official, usual, nickname; family + given names</td>
+          </tr>
+          <tr>
+            <td><code>gender</code></td>
+            <td>code</td>
+            <td>0..1</td>
+            <td>Administrative gender: <code>male</code>, <code>female</code>, <code>other</code>, <code>unknown</code></td>
+          </tr>
+          <tr>
+            <td><code>birthDate</code></td>
+            <td>date</td>
+            <td>0..1</td>
+            <td>Format: YYYY, YYYY-MM, or YYYY-MM-DD</td>
+          </tr>
+          <tr>
+            <td><code>telecom</code></td>
+            <td>ContactPoint[]</td>
+            <td>0..*</td>
+            <td>Phone, fax, email, SMS with use codes</td>
+          </tr>
+          <tr>
+            <td><code>address</code></td>
+            <td>Address[]</td>
+            <td>0..*</td>
+            <td>Home, work, or temporary with full structure</td>
+          </tr>
+          <tr>
+            <td><code>contact</code></td>
+            <td>BackboneElement[]</td>
+            <td>0..*</td>
+            <td>Emergency contacts with relationship codes</td>
+          </tr>
+          <tr>
+            <td><code>active</code></td>
+            <td>boolean</td>
+            <td>0..1</td>
+            <td>Whether record is in active use</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout note">
+        <strong>💡 Note:</strong> Cardinality notation: <code>0..1</code> means optional (0 or 1), <code>0..*</code> means optional and repeating (0 or more), <code>1..1</code> means required.
+      </div>
+    </article>
+
+    <article id="module-2" class="module">
+      <h2>Module 2: Setting Up Your Environment</h2>
+      <p>Before we start working with FHIR resources, select your test server, download the pre-configured Postman collection, and you're ready to go.</p>
+
+      <h3>2.1 Select Your FHIR Test Server</h3>
+      <p>Choose the server you want to use for this tutorial. Your selection will apply to all interactive exercises and Postman downloads.</p>
+
+      <div class="server-selector" id="serverSelector">
+        <label for="serverSelect" class="server-select-label">FHIR Server:</label>
+        <select id="serverSelect" class="server-select">
+          <option value="hapi">HAPI FHIR (Recommended)</option>
+          <option value="aegis">AEGIS WildFHIR</option>
+        </select>
+      </div>
+
+      <h3>2.2 Your Selected Server Details</h3>
+      <p>You're using the following test server for all exercises in this tutorial:</p>
+
+      <table id="serverInfoTable">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Server</strong></td>
+            <td id="serverNameCell"><code>HAPI FHIR</code></td>
+          </tr>
+          <tr>
+            <td><strong>Base URL</strong></td>
+            <td><code id="baseUrlCell">https://hapi.fhir.org/baseR4</code></td>
+          </tr>
+          <tr>
+            <td><strong>Patient Endpoint</strong></td>
+            <td><code id="patientEndpointCell">https://hapi.fhir.org/baseR4/Patient</code></td>
+          </tr>
+          <tr>
+            <td><strong>Authentication</strong></td>
+            <td>None required (public server)</td>
+          </tr>
+          <tr>
+            <td><strong>CORS</strong></td>
+            <td>Fully enabled for browser-based requests</td>
+          </tr>
+          <tr>
+            <td><strong>FHIR Version</strong></td>
+            <td>R4 (4.0.1)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warning">
+        <strong>⚠️ Important:</strong> This is a public test server. <strong>Never store real patient data.</strong> The server is periodically purged—your test data may disappear without notice. If you receive <code>429</code> or <code>5xx</code> errors, wait a minute and retry.
+      </div>
+
+      <h3>2.3 Download Pre-configured Postman Collection</h3>
+      <div class="quick-start-section">
+        <div class="quick-start-header">
+          <span class="quick-start-badge">Recommended</span>
+          <p class="quick-start-title">Import and go—no manual setup</p>
+        </div>
+
+        <p class="quick-start-description">
+          Download our ready-to-use Postman collection with all requests, headers, environment
+          variables, and test scripts pre-configured for your selected server. Import and go—no manual setup needed.
+        </p>
+
+        <div class="quick-start-actions">
+          <a href="assets/postman/FHIR-Patient-Tutorial-HAPI.postman_collection.json"
+             download="FHIR-Patient-Tutorial.postman_collection.json"
+             class="download-btn primary-btn"
+             id="downloadCollectionBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2v2h14v-2H5z"/>
+            </svg>
+            Download Collection
+          </a>
+
+          <a href="assets/postman/FHIR-Tutorial-Environment-HAPI.postman_environment.json"
+             download="FHIR-Tutorial-Environment.postman_environment.json"
+             class="download-btn secondary-btn"
+             id="downloadEnvironmentBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2v2h14v-2H5z"/>
+            </svg>
+            Download Environment
+          </a>
+        </div>
+
+        <details class="import-instructions">
+          <summary>How to import into Postman</summary>
+          <ol>
+            <li>Open Postman desktop app or web version</li>
+            <li>Click <strong>Import</strong> button (top-left) or press <code>Ctrl+O</code> / <code>Cmd+O</code></li>
+            <li>Drag and drop both downloaded files, or click "Upload Files" and select them</li>
+            <li>Click <strong>Import</strong> to confirm</li>
+            <li>Select the <strong>"FHIR Tutorial"</strong> environment from the dropdown (top-right corner)</li>
+            <li>You're ready! Start with "1. CREATE Patient" request</li>
+          </ol>
+        </details>
+
+        <h4>Successful Import Confirmation</h4>
+        <p>After importing both files, your Postman workspace should look like this:</p>
+
+        <img src="assets/img/postman-screenshots/00-collection-import.png"
+             alt="Postman workspace showing successfully imported FHIR Patient Tutorial collection with 6 requests and FHIR Tutorial environment selected"
+             class="screenshot"
+             loading="lazy">
+
+        <p>
+          You should see the <strong>FHIR Patient Tutorial</strong> collection in your left sidebar with all 6 requests
+          (CREATE, READ, UPDATE, PATCH, SEARCH, DELETE), and the <strong>FHIR Tutorial</strong> environment should be
+          selected in the top-right dropdown. Your Postman is now ready to use for the exercises in this tutorial.
+        </p>
+
+        <div class="collection-contents">
+          <h4>What's included:</h4>
+          <ul>
+            <li><strong>6 pre-built requests</strong> — CREATE, READ, UPDATE (PUT), PATCH, SEARCH, DELETE</li>
+            <li><strong>FHIR headers</strong> — Content-Type and Accept headers pre-configured</li>
+            <li><strong>Environment variables</strong> — baseUrl and patientId ready to use</li>
+            <li><strong>Auto-capture scripts</strong> — Patient ID automatically saved after creation</li>
+            <li><strong>Example payloads</strong> — Valid JSON bodies for POST, PUT, and PATCH requests</li>
+            <li><strong>Validation tests</strong> — Response validation built into each request</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <article id="module-3" class="module">
+      <h2>Module 3: Creating a Patient (POST)</h2>
+      <p>Let's start by learning how to create new Patient resources in FHIR. This is the foundation for all other operations—once you have a patient, you can read, update, search, and delete it.</p>
+
+      <h3>3.1 Understanding the CREATE Operation</h3>
+      <p>To create a new patient, you send an HTTP POST request with the Patient resource in the request body. The server will assign a unique ID and return the created resource.</p>
+
+      <h3>3.2 Try It Yourself: Create a Patient</h3>
+      <p>Use the interactive form below to create a patient on your selected FHIR test server. This will generate a real Patient ID that you'll use in subsequent modules.</p>
+
+      <!-- Try It Section for Create Patient -->
+      <div class="try-it-section">
+        <h3>Try It: Create a Patient</h3>
+        <label for="patientFamilyName">Family Name:</label>
+        <input type="text" id="patientFamilyName" placeholder="Smith">
+
+        <label for="patientGivenName">Given Name:</label>
+        <input type="text" id="patientGivenName" placeholder="John">
+
+        <button id="createPatientBtn" class="primary-btn">Create Patient</button>
+        <button id="clearCreateBtn" class="secondary-btn">Clear</button>
+
+        <div id="createdPatientId" class="patient-id-display"></div>
+        <div id="createResponseOutput" class="response-output" aria-live="polite">
+          <pre>Enter patient details and click "Create Patient"</pre>
+        </div>
+        <button id="copyCreateResponseBtn" class="copy-response-btn" style="display:none;">Copy Response</button>
+      </div>
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> Save the Patient ID from your created patient! You'll need it for Module 4 (Reading) and Module 5 (Advanced Operations).
+      </div>
+
+      <h3>3.3 Creating a Patient in Postman</h3>
+      <p>Now let's use the pre-configured Postman collection from Module 2 to create a patient. All headers and settings are already configured for you.</p>
+
+      <h4>Step 1: Open the CREATE Patient Request</h4>
+      <p>In your Postman workspace, navigate to the <strong>FHIR Patient Tutorial</strong> collection and select <strong>"1. CREATE Patient (POST)"</strong>.</p>
+
+      <img src="assets/img/postman-screenshots/01-create-patient-request.png"
+           alt="Postman showing CREATE Patient request with pre-configured headers and URL"
+           class="screenshot"
+           loading="lazy">
+
+      <p>Notice that the request is already configured with:</p>
+      <ul>
+        <li><strong>Method:</strong> POST</li>
+        <li><strong>URL:</strong> <code>{{baseUrl}}/Patient</code> (using environment variable)</li>
+        <li><strong>Headers:</strong> <code>Content-Type: application/fhir+json</code> and <code>Accept: application/fhir+json</code></li>
+      </ul>
+
+      <h4>Step 2: Review or Customize the Request Body</h4>
+      <p>The collection includes a pre-filled request body. You can use it as-is or customize it with your own data.</p>
+
+      <h4>Minimal Patient Payload (Quick Testing)</h4>
+      <p>Use this simple payload to quickly test the CREATE operation:</p>
+      <pre><code class="language-json">{
+  "resourceType": "Patient",
+  "name": [{
+    "family": "TutorialTest",
+    "given": ["Demo"]
+  }]
+}</code></pre>
+
+      <h4>Comprehensive Patient Payload (Production-Ready Example)</h4>
+      <p>This example demonstrates a complete Patient resource with demographics, contact information, identifiers, and more:</p>
+      <pre><code class="language-json">{
+  "resourceType": "Patient",
+  "identifier": [{
+    "use": "usual",
+    "type": {
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+        "code": "MR"
+      }]
+    },
+    "system": "http://hospital.example.org/mrn",
+    "value": "MRN-2026-001"
+  }],
+  "active": true,
+  "name": [{
+    "use": "official",
+    "family": "Martinez",
+    "given": ["Carlos", "Eduardo"],
+    "prefix": ["Mr."]
+  }, {
+    "use": "nickname",
+    "given": ["Charlie"]
+  }],
+  "telecom": [{
+    "system": "phone",
+    "value": "(555) 867-5309",
+    "use": "mobile",
+    "rank": 1
+  }, {
+    "system": "email",
+    "value": "carlos.martinez@example.com"
+  }],
+  "gender": "male",
+  "birthDate": "1992-07-14",
+  "address": [{
+    "use": "home",
+    "type": "physical",
+    "line": ["742 Evergreen Terrace", "Apt 3B"],
+    "city": "Springfield",
+    "state": "IL",
+    "postalCode": "62704",
+    "country": "USA"
+  }],
+  "maritalStatus": {
+    "coding": [{
+      "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+      "code": "M",
+      "display": "Married"
+    }]
+  },
+  "contact": [{
+    "relationship": [{
+      "coding": [{
+        "system": "http://terminology.hl7.org/CodeSystem/v2-0131",
+        "code": "N",
+        "display": "Next-of-Kin"
+      }]
+    }],
+    "name": {
+      "family": "Martinez",
+      "given": ["Maria"]
+    },
+    "telecom": [{
+      "system": "phone",
+      "value": "(555) 867-5310"
+    }]
+  }],
+  "communication": [{
+    "language": {
+      "coding": [{
+        "system": "urn:ietf:bcp:47",
+        "code": "es",
+        "display": "Spanish"
+      }]
+    },
+    "preferred": true
+  }]
+}</code></pre>
+
+      <h4>Step 3: Send the Request</h4>
+      <p>Click the <strong>"Send"</strong> button in Postman. The collection includes a script that automatically captures the Patient ID and saves it to your environment variable for use in subsequent requests.</p>
+
+      <img src="assets/img/postman-screenshots/02-create-patient-response.png"
+           alt="Postman showing successful 201 Created response with Patient ID"
+           class="screenshot"
+           loading="lazy">
+
+      <p>You should receive a response like this:</p>
+
+      <h4>Expected Response (201 Created)</h4>
+      <pre><code class="language-http">HTTP/1.1 201 Created
+Location: https://hapi.fhir.org/baseR4/Patient/12345/_history/1
+ETag: W/"1"</code></pre>
+
+      <p>The <code>Location</code> header contains your new Patient's URL. Extract the Patient ID (e.g., <code>12345</code>) from this URL—you'll need it for subsequent operations.</p>
+
+      <p>The response body will contain the complete Patient resource with the server-assigned ID and metadata.</p>
+
+      <div class="callout note">
+        <strong>💡 Note:</strong> The HAPI FHIR test server automatically generates the Patient ID. You cannot specify your own ID in a POST request—use PUT for that (covered in Module 5).
+      </div>
+    </article>
+
+    <article id="module-4" class="module">
+      <h2>Module 4: Reading Patient Data (GET)</h2>
+      <p>Now that you've created a patient in Module 3, let's learn how to retrieve Patient resources using GET requests. This is the most fundamental read operation in FHIR.</p>
+
+      <h3>4.1 Reading a Patient by ID in Postman</h3>
+      <p>Now let's use the pre-configured READ request to fetch the patient you created in Module 3. The Patient ID was automatically saved to your environment, so you don't need to manually enter it.</p>
+
+      <h4>Step 1: Open the READ Patient Request</h4>
+      <p>In your Postman workspace, select <strong>"2. READ Patient (GET)"</strong> from the FHIR Patient Tutorial collection.</p>
+
+      <img src="assets/img/postman-screenshots/03-read-patient-request.png"
+           alt="Postman showing READ Patient request with patientId environment variable"
+           class="screenshot"
+           loading="lazy">
+
+      <p>Notice that the URL uses <code>{{baseUrl}}/Patient/{{patientId}}</code>. The <code>{{patientId}}</code> variable was automatically populated when you created a patient in Module 3.</p>
+
+      <h4>Step 2: Send the Request</h4>
+      <p>Click the <strong>"Send"</strong> button. If the patient exists, you'll receive a <code>200 OK</code> response with the complete Patient resource.</p>
+
+      <h4>Expected Response (200 OK)</h4>
+      <img src="assets/img/postman-screenshots/04-read-patient-response.png"
+           alt="Postman showing successful 200 OK response with Patient resource"
+           class="screenshot"
+           loading="lazy">
+
+      <p>The response will contain the complete Patient resource:</p>
+      <pre><code class="language-json">{
+  "resourceType": "Patient",
+  "id": "12345",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2026-01-15T08:30:00.000+00:00"
+  },
+  "name": [{
+    "family": "Martinez",
+    "given": ["Carlos", "Eduardo"]
+  }],
+  "gender": "male",
+  "birthDate": "1992-07-14",
+  "address": [{
+    "use": "home",
+    "line": ["742 Evergreen Terrace", "Apt 3B"],
+    "city": "Springfield",
+    "state": "IL",
+    "postalCode": "62704"
+  }]
+}</code></pre>
+
+      <h3>4.2 Understanding the Response</h3>
+      <p>A successful GET request returns the Patient resource with these key elements:</p>
+      <ul>
+        <li><code>resourceType</code>: Always "Patient" for successful reads</li>
+        <li><code>id</code>: The unique identifier assigned by the server</li>
+        <li><code>meta</code>: Metadata including version ID and last updated timestamp</li>
+        <li>Resource fields: name, gender, birthDate, address, etc. (as provided during creation)</li>
+      </ul>
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> Always check the <code>resourceType</code> in responses. A successful read returns <code>Patient</code>, while errors return <code>OperationOutcome</code>.
+      </div>
+
+      <h3>4.3 Handling Errors</h3>
+
+      <h4>404 Not Found</h4>
+      <p>If you request a Patient ID that doesn't exist, you'll receive an <code>OperationOutcome</code> resource:</p>
+      <pre><code class="language-http">GET https://hapi.fhir.org/baseR4/Patient/nonexistent999</code></pre>
+
+      <h4>Response (404 Not Found)</h4>
+      <pre><code class="language-json">{
+  "resourceType": "OperationOutcome",
+  "issue": [{
+    "severity": "error",
+    "code": "not-found",
+    "diagnostics": "Resource Patient/nonexistent999 is not known"
+  }]
+}</code></pre>
+
+      <h4>410 Gone (Deleted Resource)</h4>
+      <p>If a patient was previously deleted (see Module 5), attempting to read it returns <code>410 Gone</code>:</p>
+      <pre><code class="language-json">{
+  "resourceType": "OperationOutcome",
+  "issue": [{
+    "severity": "error",
+    "code": "deleted",
+    "diagnostics": "Resource Patient/12345 is deleted"
+  }]
+}</code></pre>
+
+      <h3>4.4 Practice Exercises</h3>
+      <p>Try these exercises in Postman to reinforce your understanding:</p>
+      <ol>
+        <li><strong>Read your patient:</strong> Use the ID from the patient you created in Module 3</li>
+        <li><strong>Test error handling:</strong> Try reading a non-existent ID like <code>999999999</code></li>
+        <li><strong>Examine metadata:</strong> Check the <code>meta.versionId</code> and <code>meta.lastUpdated</code> fields</li>
+        <li><strong>Read a test patient:</strong> Try fetching <code>Patient/592912</code> (a sample patient on the HAPI server)</li>
+      </ol>
+
+      <div class="callout note">
+        <strong>💡 Note:</strong> The HAPI FHIR test server periodically purges old data. If your patient from Module 3 no longer exists, simply create a new one and use that ID.
+      </div>
+    </article>
+
+    <article id="module-5" class="module">
+      <h2>Module 5: Advanced Operations (PUT, PATCH, DELETE)</h2>
+      <p>Beyond creating and reading, FHIR supports updating and deleting Patient resources. In this module, you'll learn how to modify existing patients using PUT and PATCH, and how to remove patients using DELETE.</p>
+
+      <h3>5.1 UPDATE: Full Resource Replacement (PUT)</h3>
+      <p><strong>Critical concept:</strong> PUT performs <strong>full resource replacement</strong>. You must include all fields you want to retain—any fields omitted will be deleted from the resource.</p>
+
+      <h4>When to Use PUT</h4>
+      <ul>
+        <li>You want to replace the entire Patient resource with a new version</li>
+        <li>You have the complete, updated Patient object available</li>
+        <li>You need to remove multiple fields at once</li>
+      </ul>
+
+      <h4>Step 1: Open the UPDATE Patient Request</h4>
+      <p>In your Postman workspace, select <strong>"3. UPDATE Patient (PUT)"</strong> from the FHIR Patient Tutorial collection.</p>
+
+      <img src="assets/img/postman-screenshots/05-update-patient-request.png"
+           alt="Postman showing UPDATE Patient (PUT) request with full resource body"
+           class="screenshot"
+           loading="lazy">
+
+      <p>The request is pre-configured with:</p>
+      <ul>
+        <li><strong>Method:</strong> PUT</li>
+        <li><strong>URL:</strong> <code>{{baseUrl}}/Patient/{{patientId}}</code> (automatically uses your created patient)</li>
+        <li><strong>Headers:</strong> Already set to <code>application/fhir+json</code></li>
+      </ul>
+
+      <h4>Step 2: Modify the Request Body</h4>
+      <p>The collection includes a complete Patient resource. Update the fields you want to change. Remember: The <code>id</code> in the JSON <strong>must match</strong> your Patient ID.</p>
+      <pre><code class="language-json">{
+  "resourceType": "Patient",
+  "id": "12345",
+  "name": [{
+    "family": "Martinez-Updated",
+    "given": ["Carlos", "Eduardo", "Roberto"]
+  }],
+  "gender": "male",
+  "birthDate": "1992-07-14",
+  "address": [{
+    "use": "home",
+    "line": ["999 New Address Lane"],
+    "city": "Chicago",
+    "state": "IL",
+    "postalCode": "60601"
+  }]
+}</code></pre>
+
+      <h4>Step 3: Send the Request</h4>
+      <p>Click <strong>"Send"</strong>. Expected response: <code>200 OK</code> or <code>201 Created</code> (if the ID didn't exist previously).</p>
+
+      <img src="assets/img/postman-screenshots/06-update-patient-response.png"
+           alt="Postman showing successful PUT response with updated Patient resource"
+           class="screenshot"
+           loading="lazy">
+
+      <div class="callout warning">
+        <strong>⚠️ Warning:</strong> Any fields omitted from a PUT request will be deleted from the resource. In the example above, if the original patient had <code>telecom</code> (phone/email) data, it would be removed because it's not included in the PUT body. If you only need to change specific fields, use PATCH instead.
+      </div>
+
+      <h3>5.2 PATCH: Partial Updates (JSON Patch)</h3>
+      <p>PATCH allows you to modify specific fields without sending the entire resource. This is safer and more efficient than PUT when you only need to change one or two fields.</p>
+
+      <h4>When to Use PATCH</h4>
+      <ul>
+        <li>You want to update only specific fields (e.g., add a phone number, change birthdate)</li>
+        <li>You want to avoid the risk of accidentally deleting fields</li>
+        <li>You're making targeted modifications to large resources</li>
+      </ul>
+
+      <h4>Step 1: Open the PATCH Patient Request</h4>
+      <p>In your Postman workspace, select <strong>"4. PATCH Patient (Partial Update)"</strong> from the FHIR Patient Tutorial collection.</p>
+
+      <img src="assets/img/postman-screenshots/07-patch-patient-request.png"
+           alt="Postman showing PATCH Patient request with JSON Patch operations"
+           class="screenshot"
+           loading="lazy">
+
+      <p>The request is pre-configured with:</p>
+      <ul>
+        <li><strong>Method:</strong> PATCH</li>
+        <li><strong>URL:</strong> <code>{{baseUrl}}/Patient/{{patientId}}</code></li>
+        <li><strong>Content-Type:</strong> <code>application/json-patch+json</code> (note the different content type!)</li>
+      </ul>
+
+      <h4>Step 2: Customize the JSON Patch Operations</h4>
+      <p>The collection includes example PATCH operations. PATCH uses a special JSON Patch format (RFC 6902). Here are common operations you can use:</p>
+
+      <h4>Example: Add a Phone Number</h4>
+      <p>This adds a new phone number to the <code>telecom</code> array:</p>
+      <pre><code class="language-json">[
+  {
+    "op": "add",
+    "path": "/telecom/-",
+    "value": {
+      "system": "phone",
+      "value": "(555) 999-8888",
+      "use": "work"
+    }
+  }
+]</code></pre>
+
+      <p><strong>Path explanation:</strong> <code>/telecom/-</code> means "append to the end of the telecom array".</p>
+
+      <h4>Example: Replace birthDate</h4>
+      <pre><code class="language-json">[
+  {
+    "op": "replace",
+    "path": "/birthDate",
+    "value": "1992-08-15"
+  }
+]</code></pre>
+
+      <h4>Example: Remove an Address</h4>
+      <p>This removes the first address (index 0) from the address array:</p>
+      <pre><code class="language-json">[
+  {
+    "op": "remove",
+    "path": "/address/0"
+  }
+]</code></pre>
+
+      <h4>Example: Multiple Operations in One Request</h4>
+      <p>You can combine multiple patch operations in a single request:</p>
+      <pre><code class="language-json">[
+  {
+    "op": "replace",
+    "path": "/active",
+    "value": false
+  },
+  {
+    "op": "add",
+    "path": "/telecom/-",
+    "value": {
+      "system": "email",
+      "value": "new@example.com"
+    }
+  },
+  {
+    "op": "remove",
+    "path": "/address/0"
+  }
+]</code></pre>
+
+      <h4>Step 3: Send the Request</h4>
+      <p>Click <strong>"Send"</strong>. Expected response: <code>200 OK</code> with the updated Patient resource.</p>
+
+      <img src="assets/img/postman-screenshots/08-patch-patient-response.png"
+           alt="Postman showing successful PATCH response with partially updated Patient"
+           class="screenshot"
+           loading="lazy">
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> JSON Patch operations are applied in order. If one operation fails, the entire PATCH request fails, and no changes are made (atomic transaction).
+      </div>
+
+      <h3>5.3 DELETE: Removing a Patient</h3>
+      <p>The DELETE operation removes a Patient resource from the server. HAPI FHIR performs a "soft delete" by default, meaning the resource is marked as deleted but preserved in the version history.</p>
+
+      <h4>Step 1: Open the DELETE Patient Request</h4>
+      <p>In your Postman workspace, select <strong>"6. DELETE Patient"</strong> from the FHIR Patient Tutorial collection.</p>
+
+      <img src="assets/img/postman-screenshots/09-delete-patient-request.png"
+           alt="Postman showing DELETE Patient request"
+           class="screenshot"
+           loading="lazy">
+
+      <p>The request is pre-configured with:</p>
+      <ul>
+        <li><strong>Method:</strong> DELETE</li>
+        <li><strong>URL:</strong> <code>{{baseUrl}}/Patient/{{patientId}}</code></li>
+      </ul>
+
+      <h4>Step 2: Send the Request</h4>
+      <p>Click <strong>"Send"</strong>. No request body is needed for DELETE operations.</p>
+
+      <img src="assets/img/postman-screenshots/10-delete-patient-response.png"
+           alt="Postman showing successful DELETE response"
+           class="screenshot"
+           loading="lazy">
+
+      <h4>Expected Responses</h4>
+      <ul>
+        <li><code>200 OK</code> - Success with OperationOutcome in body</li>
+        <li><code>204 No Content</code> - Success with no response body</li>
+        <li><code>404 Not Found</code> - Patient ID doesn't exist</li>
+        <li><code>409 Conflict</code> - Other resources reference this Patient (referential integrity violation)</li>
+      </ul>
+
+      <h4>Example OperationOutcome for Successful Delete (200 OK)</h4>
+      <pre><code class="language-json">{
+  "resourceType": "OperationOutcome",
+  "issue": [{
+    "severity": "information",
+    "code": "informational",
+    "diagnostics": "Successfully deleted 1 resource(s)"
+  }]
+}</code></pre>
+
+      <h4>What Happens After Deletion?</h4>
+      <p>After deleting a patient:</p>
+      <ul>
+        <li>GET requests return <code>410 Gone</code> with an OperationOutcome</li>
+        <li>The resource is still accessible via version history (e.g., <code>/Patient/12345/_history/1</code>)</li>
+        <li>Search queries will not return the deleted patient</li>
+      </ul>
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> HAPI FHIR's soft delete preserves data for audit and compliance purposes. Reading a deleted resource returns <code>410 Gone</code>, not <code>404 Not Found</code>.
+      </div>
+
+      <h3>5.4 Practice Exercises</h3>
+      <p>Reinforce your learning with these exercises:</p>
+      <ol>
+        <li><strong>Update with PUT:</strong> Read the patient from Module 3, modify the JSON, and send a PUT request to update it</li>
+        <li><strong>Add contact info with PATCH:</strong> Use PATCH to add a phone number or email without replacing the entire resource</li>
+        <li><strong>Test PATCH operations:</strong> Try replace, add, and remove operations on different fields</li>
+        <li><strong>Delete a patient:</strong> Create a test patient, then delete it and verify you get <code>410 Gone</code> when trying to read it</li>
+      </ol>
+
+      <div class="callout warning">
+        <strong>⚠️ Warning:</strong> Always be cautious with PUT and DELETE operations in production environments. Consider implementing confirmation prompts and audit logging for these operations.
+      </div>
+    </article>
+
+    <article id="module-6" class="module">
+      <h2>Module 6: Search Operations</h2>
+      <p>FHIR's powerful search capabilities let you find patients based on demographics, identifiers, and other criteria. Let's use the pre-configured SEARCH request to explore these capabilities.</p>
+
+      <h3>6.1 Using the SEARCH Request in Postman</h3>
+      <p>Open the <strong>"5. SEARCH Patients (GET)"</strong> request from your FHIR Patient Tutorial collection.</p>
+
+      <img src="assets/img/postman-screenshots/11-search-patient-request.png"
+           alt="Postman showing SEARCH Patients request with query parameters"
+           class="screenshot"
+           loading="lazy">
+
+      <p>The SEARCH request uses query parameters to filter results. You can modify the parameters in the "Params" tab to customize your search.</p>
+
+      <h3>6.2 Search Parameter Reference</h3>
+      <p>Here are the most commonly used search parameters for Patient resources:</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Example</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>_id</code></td>
+            <td>token</td>
+            <td><code>?_id=12345</code></td>
+            <td>Logical resource ID</td>
+          </tr>
+          <tr>
+            <td><code>name</code></td>
+            <td>string</td>
+            <td><code>?name=smith</code></td>
+            <td>Any part of name (case-insensitive)</td>
+          </tr>
+          <tr>
+            <td><code>family</code></td>
+            <td>string</td>
+            <td><code>?family=Martinez</code></td>
+            <td>Family name only</td>
+          </tr>
+          <tr>
+            <td><code>given</code></td>
+            <td>string</td>
+            <td><code>?given=Carlos</code></td>
+            <td>Given name only</td>
+          </tr>
+          <tr>
+            <td><code>birthdate</code></td>
+            <td>date</td>
+            <td><code>?birthdate=1992-07-14</code></td>
+            <td>Exact date</td>
+          </tr>
+          <tr>
+            <td><code>birthdate</code></td>
+            <td>date</td>
+            <td><code>?birthdate=gt1990-01-01</code></td>
+            <td>After date (gt, lt, ge, le)</td>
+          </tr>
+          <tr>
+            <td><code>gender</code></td>
+            <td>token</td>
+            <td><code>?gender=male</code></td>
+            <td>Administrative gender</td>
+          </tr>
+          <tr>
+            <td><code>identifier</code></td>
+            <td>token</td>
+            <td><code>?identifier=http://hospital.org/mrn|12345</code></td>
+            <td>System and value (pipe character)</td>
+          </tr>
+          <tr>
+            <td><code>phone</code></td>
+            <td>token</td>
+            <td><code>?phone=555-1234</code></td>
+            <td>Phone number</td>
+          </tr>
+          <tr>
+            <td><code>email</code></td>
+            <td>token</td>
+            <td><code>?email=test@example.com</code></td>
+            <td>Email address</td>
+          </tr>
+          <tr>
+            <td><code>address</code></td>
+            <td>string</td>
+            <td><code>?address=Boston</code></td>
+            <td>Any address field</td>
+          </tr>
+          <tr>
+            <td><code>address-city</code></td>
+            <td>string</td>
+            <td><code>?address-city=Chicago</code></td>
+            <td>City specifically</td>
+          </tr>
+          <tr>
+            <td><code>active</code></td>
+            <td>token</td>
+            <td><code>?active=true</code></td>
+            <td>Record status</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout note">
+        <strong>💡 Note:</strong> When using the <code>identifier</code> parameter with system and value, the pipe character (<code>|</code>) must be URL-encoded as <code>%7C</code> in actual HTTP requests.
+      </div>
+
+      <h3>6.3 Combining Search Parameters</h3>
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> In the Postman collection's SEARCH request, you can easily add, remove, or modify query parameters using the "Params" tab. Just check/uncheck parameters or change their values without editing the URL directly.
+      </div>
+
+      <h4>AND Logic (all conditions must match)</h4>
+      <p>Separate parameters with <code>&</code>:</p>
+      <pre><code class="language-http">GET /Patient?family=Martinez&gender=male&birthdate=gt1990-01-01</code></pre>
+
+      <h4>OR Logic (any condition can match)</h4>
+      <p>Use comma-separated values within a single parameter:</p>
+      <pre><code class="language-http">GET /Patient?gender=male,female
+GET /Patient?address-state=IL,MA,NY</code></pre>
+
+      <h4>Date Ranges</h4>
+      <p>Combine greater-than and less-than prefixes:</p>
+      <pre><code class="language-http">GET /Patient?birthdate=ge1980-01-01&birthdate=le1990-12-31</code></pre>
+
+      <p><strong>Date prefix operators:</strong></p>
+      <ul>
+        <li><code>eq</code> - Equal (default if no prefix)</li>
+        <li><code>gt</code> - Greater than</li>
+        <li><code>ge</code> - Greater than or equal</li>
+        <li><code>lt</code> - Less than</li>
+        <li><code>le</code> - Less than or equal</li>
+      </ul>
+
+      <h3>6.4 Pagination and Sorting</h3>
+
+      <h4>Limit Results with _count</h4>
+      <pre><code class="language-http">GET /Patient?name=smith&_count=10</code></pre>
+
+      <h4>Sort Results with _sort</h4>
+      <pre><code class="language-http">GET /Patient?_count=20&_sort=family
+GET /Patient?_count=20&_sort=-birthdate  # Descending (newest first)</code></pre>
+
+      <p>Use a minus sign (<code>-</code>) prefix for descending order.</p>
+
+      <h3>6.5 Understanding Bundle Responses</h3>
+      <p>When you send a SEARCH request, results are returned as a <strong>Bundle</strong> resource containing matched entries:</p>
+
+      <img src="assets/img/postman-screenshots/14-search-bundle-response.png"
+           alt="Postman showing Bundle response from search operation"
+           class="screenshot"
+           loading="lazy">
+
+      <pre><code class="language-json">{
+  "resourceType": "Bundle",
+  "type": "searchset",
+  "total": 42,
+  "link": [
+    {"relation": "self", "url": "https://hapi.fhir.org/baseR4/Patient?name=smith&_count=10"},
+    {"relation": "next", "url": "https://hapi.fhir.org/baseR4?_getpages=abc123&_pageId=1"}
+  ],
+  "entry": [
+    {
+      "fullUrl": "https://hapi.fhir.org/baseR4/Patient/592912",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "592912",
+        "name": [{"family": "Smith", "given": ["John"]}],
+        "gender": "male"
+      },
+      "search": {"mode": "match"}
+    }
+  ]
+}</code></pre>
+
+      <h4>Key Bundle Elements</h4>
+      <ul>
+        <li><code>total</code> - Total matching resources (may be more than returned)</li>
+        <li><code>link</code> - Navigation URLs for pagination (self, next, previous)</li>
+        <li><code>entry</code> - Array of matching resources with their full URLs</li>
+        <li><code>search.mode</code> - "match" for direct matches, "include" for referenced resources</li>
+      </ul>
+
+      <div class="callout tip">
+        <strong>💡 Tip:</strong> Use the <code>next</code> link from the Bundle to retrieve additional pages of results. The server maintains the search context for a limited time.
+      </div>
+    </article>
+
+    <section id="quick-reference">
+      <h2>Quick Reference</h2>
+      <p>A handy cheat sheet for working with the FHIR Patient resource.</p>
+
+      <h3>Server Configuration</h3>
+      <table>
+        <tbody>
+          <tr>
+            <td><strong>Server</strong></td>
+            <td><code id="qrServerName">HAPI FHIR</code></td>
+          </tr>
+          <tr>
+            <td><strong>Base URL</strong></td>
+            <td><code id="qrBaseUrl">https://hapi.fhir.org/baseR4</code></td>
+          </tr>
+          <tr>
+            <td><strong>FHIR Version</strong></td>
+            <td>R4 (4.0.1)</td>
+          </tr>
+          <tr>
+            <td><strong>Accept Header</strong></td>
+            <td><code>application/fhir+json</code></td>
+          </tr>
+          <tr>
+            <td><strong>Content-Type Header</strong></td>
+            <td><code>application/fhir+json</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Top Endpoints</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Read</strong></td>
+            <td>GET</td>
+            <td><code>/Patient/{id}</code></td>
+            <td>Retrieve a single patient by ID</td>
+          </tr>
+          <tr>
+            <td><strong>Search</strong></td>
+            <td>GET</td>
+            <td><code>/Patient?parameter=value</code></td>
+            <td>Search for patients matching criteria</td>
+          </tr>
+          <tr>
+            <td><strong>Create</strong></td>
+            <td>POST</td>
+            <td><code>/Patient</code></td>
+            <td>Create a new patient</td>
+          </tr>
+          <tr>
+            <td><strong>Update</strong></td>
+            <td>PUT</td>
+            <td><code>/Patient/{id}</code></td>
+            <td>Replace entire patient resource</td>
+          </tr>
+          <tr>
+            <td><strong>Patch</strong></td>
+            <td>PATCH</td>
+            <td><code>/Patient/{id}</code></td>
+            <td>Partially update specific fields</td>
+          </tr>
+          <tr>
+            <td><strong>Delete</strong></td>
+            <td>DELETE</td>
+            <td><code>/Patient/{id}</code></td>
+            <td>Remove a patient (soft delete)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Common HTTP Status Codes</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Status</th>
+            <th>Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>200</strong></td>
+            <td>OK</td>
+            <td>Successful read, search, or update</td>
+          </tr>
+          <tr>
+            <td><strong>201</strong></td>
+            <td>Created</td>
+            <td>Resource successfully created (check Location header)</td>
+          </tr>
+          <tr>
+            <td><strong>204</strong></td>
+            <td>No Content</td>
+            <td>Successful delete</td>
+          </tr>
+          <tr>
+            <td><strong>400</strong></td>
+            <td>Bad Request</td>
+            <td>Invalid JSON or failed validation</td>
+          </tr>
+          <tr>
+            <td><strong>404</strong></td>
+            <td>Not Found</td>
+            <td>Resource ID doesn't exist</td>
+          </tr>
+          <tr>
+            <td><strong>409</strong></td>
+            <td>Conflict</td>
+            <td>Version conflict or referential integrity violation</td>
+          </tr>
+          <tr>
+            <td><strong>410</strong></td>
+            <td>Gone</td>
+            <td>Resource was deleted</td>
+          </tr>
+          <tr>
+            <td><strong>422</strong></td>
+            <td>Unprocessable Entity</td>
+            <td>Business rule violation</td>
+          </tr>
+          <tr>
+            <td><strong>429</strong></td>
+            <td>Too Many Requests</td>
+            <td>Rate limit exceeded (wait and retry)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Response Types</h3>
+      <div class="callout note">
+        <strong>💡 Remember:</strong> Always check the <code>resourceType</code> in responses:
+        <ul>
+          <li>Success: <code>"resourceType": "Patient"</code></li>
+          <li>Error: <code>"resourceType": "OperationOutcome"</code></li>
+          <li>Search: <code>"resourceType": "Bundle"</code></li>
+        </ul>
+      </div>
+
+      <h3>Useful Search Parameters</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Name (any part)</td>
+            <td><code>?name=smith</code></td>
+          </tr>
+          <tr>
+            <td>Family name</td>
+            <td><code>?family=Martinez</code></td>
+          </tr>
+          <tr>
+            <td>Birth date range</td>
+            <td><code>?birthdate=ge1980&birthdate=le1990</code></td>
+          </tr>
+          <tr>
+            <td>Gender</td>
+            <td><code>?gender=male</code></td>
+          </tr>
+          <tr>
+            <td>Multiple cities (OR)</td>
+            <td><code>?address-city=Boston,Chicago</code></td>
+          </tr>
+          <tr>
+            <td>Limit results</td>
+            <td><code>?_count=10</code></td>
+          </tr>
+          <tr>
+            <td>Sort by name</td>
+            <td><code>?_sort=family</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <h3>Additional Resources</h3>
+      <ul>
+        <li><a href="https://hl7.org/fhir/patient.html" target="_blank" rel="noopener noreferrer">Official FHIR Patient Resource Documentation</a></li>
+        <li><a href="https://hapi.fhir.org/" target="_blank" rel="noopener noreferrer">HAPI FHIR Server Homepage</a></li>
+        <li><a href="https://wildfhir.aegis.net/" target="_blank" rel="noopener noreferrer">AEGIS WildFHIR Server Homepage</a></li>
+        <li><a href="https://www.hl7.org/fhir/resourcelist.html" target="_blank" rel="noopener noreferrer">Complete FHIR Resource List</a></li>
+        <li><a href="https://www.hl7.org/fhir/http.html" target="_blank" rel="noopener noreferrer">FHIR RESTful API Documentation</a></li>
+      </ul>
+
+      <h3>Tutorial Tools</h3>
+      <button id="resetProgressBtn" class="secondary-btn">Reset Progress</button>
+      <p style="margin-top: 1rem; font-size: 0.875rem;">Click to clear saved progress, patient ID, and server selection from browser storage.</p>
+
+      <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+
+      <p style="text-align: center; color: #666; font-size: 0.875rem;">
+        <strong>FHIR Patient Resource Tutorial</strong><br>
+        Built with FHIR R4<br>
+        © 2026 | For educational purposes only
+      </p>
+    </footer>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
